@@ -26,7 +26,7 @@ WHEN (cdi.DispositionDate < date_sub(NOW(), INTERVAL 4 YEAR) AND cdi.Disposition
      THEN "Yes"
 WHEN (cdi.Disposition='GUILTY' AND cdi.Description LIKE "%CDS%MARI%" AND cdi.Description NOT LIKE '%NOT%')
      THEN "Probably"
-WHEN (cdi.Disposition='GUILTY' AND (cdi.Description LIKE "%URINAT%" or cdi.Description LIKE "%PANHAN%" or cdi.Description LIKE "%SLEEP%" or cdi.Description LIKE '%OPEN CONT%' OR Description LIKE '%CONS%ALC%PUB%'Or cdi.Description LIKE '%FAIL%FARE%') AND cdi.DispositionDate < date_sub(NOW(), INTERVAL 3 YEAR))
+WHEN (cdi.Disposition='GUILTY' AND (cdi.Description LIKE "%URINAT%" or cdi.Description LIKE "%PANHAN%" or cdi.Description LIKE "%SLEEP%" or cdi.Description LIKE '%OPEN CONT%' OR Description LIKE '%CONS%ALC%PUB%'Or cdi.Description LIKE '%FAIL%FARE%' OR (cdi.Description LIKE '%FAIL%PMNT%' AND ci.CaseType='MASS TRANSIT CITATION')) AND cdi.DispositionDate < date_sub(NOW(), INTERVAL 3 YEAR))
      THEN "Probably"
 ELSE "No"
                     END)
