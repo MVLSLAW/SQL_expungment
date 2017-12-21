@@ -10,10 +10,24 @@ WHEN (DispositionDate < date_sub(NOW(), INTERVAL 4 YEAR) AND Disposition='GUILTY
                               THEN "Yes"
 WHEN (DispositionDate < date_sub(NOW(), INTERVAL 3 YEAR) AND Disposition = "STET")
     THEN "Yes"
+WHEN (Disposition='GUILTY' AND (CJISCode = "7-4100" 
+                                    OR Description LIKE "%URINAT%" 
+                                    or Description LIKE "%PANHAN%" 
+                                    or Description LIKE "%SLEEP%" 
+                                    or Description LIKE '%OPEN CONT%' 
+                                    OR Description LIKE '%CONS%ALC%PUB%' 
+                                    Or Description LIKE '%FAIL%FARE%' 
+                                    OR Description LIKE '%FAIL%PROOF%P%' 
+                                    OR Description LIKE '%CONS%FOOD% ' 
+                                    OR Description LIKE '%SMOK%TRANS%' 
+                                    OR Description LIKE '%SOLIC%TRANS%' 
+                                    OR Description LIKE '%POSS%ALC%PUB%' 
+                                    OR Description LIKE '%PARK%PROP%') 
+                                    AND DispositionDate < date_sub(NOW(), INTERVAL 3 YEAR))
+                            THEN "Yes"
 WHEN (Disposition='GUILTY' AND Description LIKE "%CDS%MARI%")
                               THEN "Maybe"
-WHEN (Disposition='GUILTY' AND (Description LIKE "%URINAT%" or Description LIKE "%PANHAN%" or Description LIKE "%SLEEP%" or Description LIKE '%OPEN CONT%' OR Description LIKE '%CONS%ALC%PUB%'Or Description LIKE '%FAIL%FARE%') AND DispositionDate < date_sub(NOW(), INTERVAL 3 YEAR))
-                            THEN "Maybe"
+
 ELSE "No"                    
                     END) as status, NULL as id
 FROM `charge_and_disposition_information`
