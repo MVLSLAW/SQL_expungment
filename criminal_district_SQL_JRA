@@ -1,40 +1,76 @@
-SELECT CaseNumber, (CASE WHEN end_date < date_sub(Now(), INTERVAL wait_years YEAR) THEN "Maybe" ELSE "Not Yet" END) as expungeability, date_add(end_date, INTERVAL wait_years YEAR) as estimate_date, wait_years
-FROM
-(SELECT CaseNumber, GREATEST(date_add(date_add(date_add(DispositionDate, INTERVAL JailTermDays DAY), INTERVAL JailTermMos MONTH), INTERVAL JailTermYrs YEAR),(CASE WHEN PBJEndDate IS NOT NULL THEN PBJEndDate ELSE 0 END), (CASE WHEN ProbationEndDate IS NOT NULL THEN ProbationEndDate ELSE 0 END),DispositionDate) as end_date, (CASE WHEN Statute LIKE 'CR.3.203%' THEN 15 ELSE 10 END) as wait_years
-FROM charge_and_disposition_information
-WHERE Disposition='GUILTY' AND 
-    (CJISCode in ("3 5399", "3 1314", "1 0972", "1 0043","1 0114", 
-                  "3 0125", "3 0120", "3 0125", "3 0126", "3 0130", 
-                  "3 0135", "3 0140", "3 0150", "3 0155", "3 0160", 
-                  "3 0160", "3 165", "3 0180", "3 0185","2 0254", 
-                  "2 0354", "2A0254", "2A0354", "2C0254", "2C0354",
-                  "1 3901", "1 3903", "3 3921", "1 3908", "2 3908", 
-                  "2 3921", "2 3925","1 1093","1 0640", "1 0641", 
-                  "1 0643", "1 0644", "1 0645", "1 0646", "2 0050", 
-                  "2 0055", "2 0060", "2 0065", "3 3942", "3 3946", 
-                  "3 3947", "1 3804","5100", "1 5099","3 2607", 
-                  "1 2602", "6 2600", "7 2607", "1 0419","2 2411", 
-                  "1 0220", "1 2405", "1 0330", "1 0331", "1 0332", 
-                  "1 0336", "3 2602","1 6503", "2 2003", "1 0215", 
-                  "1 0217", "1 2608", "2 3080", "2 3090", "1 0291", 
-                  "2 2800", "2 810", "2 2820", "7 5501", "2 2210",
-                  "1 0247", "1 0248", "1 0249", "1 0250", "1 0251", 
-                  "1 0252", "1 0567", "1 0568", "1 0569", "1 0570", 
-                  "1 0571", "1 0573", "1 1635", "4 3550", "1 0691", 
-                  "5 3550", "5 3555", "6 3555", "7 3550", "9 0082", 
-                  "1 0255", "1 0256", "10257", "1 0566", "1 0025", 
-                  "1 5599", "1 0259", "1 0260", "1 0261", "1 0262", 
-                  "1 3550","1 1415", "1 1416", "1 0651","1 2474", 
-                  "1 1475", "1 1474","2 0105") OR 
-      Description LIKE "%public intox%" OR 
-      Description LIKE "%deceptive%" OR
-      Statute LIKE "PS.5.307%" OR 
-      Statute LIKE "PS.5.308%" OR 
-      Statute LIKE "PS.6.602%" OR 
-      Statute LIKE "PS.7.402%" OR 
-      Statute LIKE "PS.14.114%" OR 
-      Statute LIKE "CR.8.103%" OR 
-      Statute LIKE "CR.8.206%" OR 
-      Statute LIKE "CR.7.104%")
-LIMIT 100) as inside
+UPDATE test_exp
+INNER JOIN (
+SELECT id,
+(CASE 
+WHEN end_date < date_sub(Now(), INTERVAL wait_years YEAR) 
+THEN "JRA-Maybe" 
+ELSE "JRA-Not Yet" END) as expungability, 
+date_add(end_date, INTERVAL wait_years YEAR) as estimate_date, 
+wait_years
+FROM(
+
+SELECT inside.id, 
+    CaseNumber, 
+	ChargeNo,
+	GREATEST(
+        (CASE WHEN (JailTermDays is not NULL or JailTermMos is not NULL or JailTermYrs is not NULL) 
+        THEN (date_add(date_add(date_add(DispositionDate, INTERVAL JailTermDays DAY), INTERVAL JailTermMos MONTH), INTERVAL JailTermYrs YEAR)) 
+        ELSE 0 END),(CASE WHEN PBJEndDate IS NOT NULL THEN PBJEndDate ELSE 0 END), (CASE WHEN ProbationEndDate IS NOT NULL THEN ProbationEndDate ELSE 0 END),DispositionDate) as end_date, 
+    (CASE WHEN Statute LIKE 'CR.3.203%' THEN 15 ELSE 10 END) as wait_years
+	FROM (
+		SELECT test_exp.ID, 
+        test_exp.CaseNumber, 
+        test_exp.ChargeNo, 
+        LEFT(CJISCode,1) as CJIS_init, 
+        MID(CJISCode,2,1) as CJIS_inchoate, 
+        RIGHT(CJISCode,4) as CJIS2, 
+        DispositionDate, 
+        JailTermDays, 
+        JailTermMos, 
+        JailTermYrs, 
+        PBJEndDate, 
+        ProbationEndDate, 
+        Statute, 
+        Description
+		FROM charge_and_disposition_information
+		INNER JOIN test_exp ON 							test_exp.Casenumber=charge_and_disposition_information.CaseNumber AND test_exp.ChargeNo=charge_and_disposition_information.ChargeNo
+		WHERE Disposition='GUILTY' AND test_exp.Expungability='No') as inside
+	WHERE 
+    (CJIS_init=1 AND inside.CJIS2 in ("0257","0025","0043","0114","0215","0217","0220","0247",
+                                        "0248","0249","0250","0251","0252","0255","0256","0259",
+                                        "0260","0261","0262","0291","0330","0331","0332","0336",
+                                        "0419","0566","0567","0568","0569","0570","0571","0573",
+                                        "0640","0641","0643","0644","0645","0646","0651","0691",
+                                        "0972","1093","1415","1416","1474","1475","1635","2405",
+                                        "2474","2602","2608","3901","3550","3804","3903","3908",
+                                        "5099","5100","5599","6503")) 
+    OR (CJIS_init=2 AND inside.CJIS2 in ("0050","0055","0060","0065","0254","0354","2003","0105",
+                                        "2210","2411","2800","2820","3080","3090","3908","3921",
+                                        "3925","0810","0254","0354")) 
+    OR (CJIS_init=3 AND inside.CJIS2 in ("0120","0125","0126","0130","0135","0140","0150","0155",
+                                        "0160","0180","0185","1314","0165","2602","2607","3921",
+                                        "3942","3946","3947")) 
+    OR (CJIS_init=4 AND inside.CJIS2=3550) 
+    OR (CJIS_init=5 AND inside.CJIS2 in ("3550","3555")) 
+    OR (CJIS_init=6 AND inside.CJIS2 in("2600","3555")) 
+    OR (CJIS_init=7 AND inside.CJIS2 in("2607","3550","5501")) 
+    OR (CJIS_init=9 AND inside.CJIS2 in ("0082")) 
+    OR Description LIKE "%public intox%" 
+    OR Description LIKE "%deceptive%" 
+    OR Statute LIKE "PS.5.307%" 
+    OR Statute LIKE "PS.5.308%" 
+    OR Statute LIKE "PS.6.602%" 
+    OR Statute LIKE "PS.7.402%" 
+    OR Statute LIKE "PS.14.114%" 
+    OR Statute LIKE "CR.8.103%" 
+    OR Statute LIKE "CR.8.206%" 
+    OR Statute LIKE "CR.7.104%") 
+    as inside2) 
+    as inside3
+    ON test_exp.id=inside3.id
+
+SET test_exp.Expungability=inside3.Expungability
+
+WHERE test_exp.Expungability='No' 
+
 
