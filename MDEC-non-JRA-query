@@ -1,0 +1,39 @@
+SELECT
+CaseNumber,
+ChargeNo,
+(CASE 
+WHEN Disposition in ("NOT GUILTY", "Acquitted", "DISMISSED","COMPROMISE", "COMPROMISED", "JUDGMENT OF ACQUITAL","ACQUITTAL JUDGMENT GRANTED","MERGED","CLOSED - JEOPARDY OR OTHER CONVICTION","NOLLE PROSEQUI","NOT CRIMINALLY RESPONSIBLE","NOT GUILTY FOR REASON OF INSANITY", "Guilty - Not Criminally Responsible", "Not Criminally Responsible - Released","Not Criminally Responsible - Committed") 
+            THEN "Yes"
+WHEN (PBJEndDate < date_sub(NOW(), INTERVAL 3 YEAR) AND Disposition IN ("PBJ Supervised","PBJ Unsupervised","Probation Before Judgment" ,"Probation Before Judgment - Supervised", "Probation Before Judgment - UnSupervised","Probation Before Judgment - 641")) AND NOT(CJIS_init=1 AND CJIS_end IN ("0765","0770","0775","0780","0900","0693","0755","0760"))
+      THEN "Yes"
+WHEN (Disposition='GUILTY' AND ((CJIS_init=1 AND CJIS_end= '1635') OR Description LIKE "%MARI%LESS THAN 10 G%")) 
+                              THEN "Yes"
+WHEN (DispositionDate < date_sub(NOW(), INTERVAL 4 YEAR) AND Disposition='GUILTY' AND Description LIKE "%CDS%MARI%")
+                              THEN "Yes"
+WHEN (DispositionDate < date_sub(NOW(), INTERVAL 3 YEAR) AND Disposition = "STET")
+    THEN "Yes"
+WHEN (Disposition='GUILTY' AND Description LIKE "%CDS%MARI%")
+                              THEN "Maybe"
+WHEN (Disposition='GUILTY' AND (CJISCode = "7-4100" OR Description LIKE "%URINAT%" or Description LIKE "%PANHAN%" or Description LIKE "%SLEEP%" or Description LIKE '%OPEN CONT%' OR Description LIKE '%CONS%ALC%PUB%' Or Description LIKE '%FAIL%FARE%' OR Description LIKE '%FAIL%PROOF%P%' OR Description LIKE '%CONS%FOOD% ' OR Description LIKE '%SMOK%TRANS%' OR Description LIKE '%SOLIC%TRANS%' OR Description LIKE '%POSS%ALC%PUB%' OR Description LIKE '%PARK%PROP%' OR Description LIKE '') AND DispositionDate < date_sub(NOW(), INTERVAL 3 YEAR))
+                            THEN "Yes"
+ELSE "No"                    
+                    END) as status, 
+NULL as id
+
+FROM
+(
+SELECT cdi.CaseNumber, 
+cdi.ChargeNo, 
+cdi.CJISCode,
+left(CJISCode,1) as CJIS_init, 
+right(CJISCode,4) as CJIS_end, 
+cdi.ChargeDescription as Description, 
+cdi.StatuteCode as Statute, 
+cdi.DispositionDate, 
+cdi.Disposition, 
+(CASE WHEN pb.supervised='true' 
+	THEN date_add(date_add(date_add(date_add(pb.StartDate, INTERVAL pb.SupervisedHours HOUR), INTERVAL pb.SupervisedDays DAY), INTERVAL pb.SupervisedMos MONTH), INTERVAL pb.SupervisedYrs YEAR)
+	ELSE date_add(date_add(date_add(date_add(pb.StartDate, INTERVAL pb.UnSupervisedHours HOUR), INTERVAL pb. UnSupervisedDays DAY), INTERVAL pb. UnSupervisedMos MONTH), INTERVAL pb. UnSupervisedYrs YEAR) END) as PBJendDate
+FROM charge_and_disposition_information as cdi
+LEFT JOIN probation as pb ON pb.CaseNumber=cdi.CaseNumber
+) as base
